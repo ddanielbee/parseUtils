@@ -1,0 +1,96 @@
+<div class="row">
+  <div class="col s12 m8">
+    <h1>Posting Data to Parse. Beginner's guide</h1>
+    <p>Posting Data to Parse is pretty straightforward. Nevertheless, it's nice to have an example lying around.</p>
+    <blockquote>
+      After you post something, look it up at the get section. If everything went smoothly, It'll be there =)
+    </blockquote>
+    <div class="row">
+      <form ng-submit="saveLanguage(language)" class="col s12">
+        <div class="row">
+          <div class="input-field col s6">
+            <i class="material-icons prefix">input</i>
+            <input ng-model="language.name" id="icon_prefix" type="text" class="validate">
+            <label for="icon_prefix">Language</label>
+          </div>
+          <div class="input-field col s6">
+            <i class="material-icons prefix">label</i>
+            <input ng-model="language.abr" id="icon_telephone" type="text" class="validate">
+            <label for="icon_telephone">Abbreviation</label>
+          </div>
+          <div class="input-field col s12">
+            <button class="btn waves-effect waves-light" type="submit">Submit</button>
+          </div>
+        </div>
+      </form>
+    </div>
+    Here's the code: 
+    <h4>Service</h4>
+    <pre prism class="language-javascript">
+      <code>        
+app.factory('Post', function($q) {
+  var Post = Parse.Object.extend('Languages', {
+
+  }, {
+    saveLanguage: function(language) {
+      var Language = new Post();
+      var defer = $q.defer();
+      Language.set('name', language.name);
+      Language.set('abr', language.abr);
+      Language.save(null, {
+        success: function(result) {
+          defer.resolve(result);
+        },
+        error: function(language, error) {
+          defer.reject(error);
+        }
+      });
+
+      return defer.promise;
+    }
+  });
+  return Post;
+});
+      </code>
+    </pre>
+    <h4>Controller</h4>
+    <pre prism class="language-javascript">
+      <code>
+app.controller('PostController', function($scope, Post) {
+  $scope.language = {};
+  toastr.options.progressBar = true;
+  toastr.options.closeButton = true;
+
+  $scope.saveLanguage = function(language) {
+    if(!simpleValidation(language))
+    {
+      Post.saveLanguage(language)
+      .then(function(result) {
+        $scope.language = {};
+        toastr.success('Data Added !', '=D');
+      }, function(error) {
+        toastr.error("Something bad happened, and it's not your fault", 'Oops !');
+      })
+    } else
+    {
+      toastr.error("Fill the form please", 'Oops !');
+    }
+  };
+
+  var simpleValidation = function(language) {
+    var error = false;
+    if(language.name == "" || language.name == undefined || language.name == null || language.abr == "" || language.abr == undefined || language.abr == null)
+    {
+      error = true;
+    }
+    return error;
+  }
+});
+      </code>
+    </pre>
+    <p>What's important to note here, is the use of Angular's defer service for turning Parse Callbacks into Angular Promises. This is important because Angular just works so much better with it's own promises, and it's quite simple to implement, so why not ?</p>
+    <blockquote>
+      Note: The simple validation is quite crappy, I know, it was rushed. You're welcome to write it better =). 
+    </blockquote>
+  </div>
+</div>

@@ -1,0 +1,173 @@
+<div class="row">
+  <div class="col s12 m8">
+    <h1>RealTime Parse with Pubnub</h1>
+    <p>One of the biggest faults that Parse has is the fact that it's not realtime. Well, that changes when you mix Pubnub with Parse, and here's an example of that.</p>
+    <blockquote>
+      <strong>Cat's name:</strong> {{cat.name}}
+      <br>
+      <strong>Cat's breed:</strong> {{cat.breed}}
+    </blockquote>
+    <p>Now, change the Cat's name and breed here:</p>
+    <div class="row">
+      <form ng-submit="updateCat(catForm)" class="col s12">
+        <div class="row">
+          <div class="input-field col s6">
+            <i class="material-icons prefix">input</i>
+            <input ng-model="catForm.name" id="icon_prefix" type="text" class="validate">
+            <label for="icon_prefix">Name</label>
+          </div>
+          <div class="input-field col s6">
+            <i class="material-icons prefix">label</i>
+            <input ng-model="catForm.breed" id="icon_telephone" type="text" class="validate">
+            <label for="icon_telephone">Breed</label>
+          </div>
+          <div class="input-field col s12">
+            <button class="btn waves-effect waves-light" type="submit">Submit</button>
+          </div>
+        </div>
+      </form>
+    </div>
+    <blockquote>
+      Note: This may seem like it's just updating the $scope, but it's really updating the database we have over at Parse, and then when that change gets registered by PubNub, it gets changed here as well. Cool Stuff. =)
+    </blockquote>
+    <p>Once again, to make Pubnub work, we need some cloudcode: </p>
+    <pre prism class="language-javascript">
+      <code>
+Parse.Cloud.afterSave("Cat", function(request) {
+  var pubnub = { 
+    'publish_key'   : 'YourPublishKey', 
+    'subscribe_key' : 'YourSubscribeKey'
+  };
+  var channel = 'cat';
+  var object = JSON.stringify(request.object);
+  Parse.Cloud.httpRequest({
+    url: 'http://pubsub.pubnub.com/publish/' + 
+         pubnub.publish_key   +   '/' + 
+         pubnub.subscribe_key + '/0/' + 
+         channel          + '/0/' + 
+         object,
+
+    // SUCCESS CALLBACK
+    success: function(httpResponse) {
+        console.log(httpResponse.text);
+    },
+
+    // You should consider retrying here when things misfire
+    error: function(httpResponse) {
+        console.error('Request failed ' + httpResponse.status);
+    }
+  });
+});
+      </code>
+    </pre>
+    <p>And here's the rest of the code that makes up for this snippet:</p>
+    <h4>Service</h4>
+    <pre prism class="language-javascript">
+      <code>
+app.factory('Pub', function($q) {
+  var Pub = Parse.Object.extend('Cat', {
+
+  }, {
+    getAll: function() {
+      var defer = $q.defer();
+      var query = new Parse.Query(this);
+      query.first({
+        success : function(cat) {
+          defer.resolve(cat);
+        },
+        error : function(error) {
+          defer.reject(error);
+        }
+      });
+      return defer.promise;
+    },
+
+    update: function(cat, newCat) {
+      var defer = $q.defer();
+      cat.set('name', newCat.name);
+      cat.set('breed', newCat.breed);
+      cat.save(null, {
+        success: function(cat) {
+          defer.resolve(cat);
+        },
+        error: function(cat, error) {
+          defer.reject(error);
+        }
+      });
+      return defer.promise;
+    }
+  });
+
+  Object.defineProperty(Pub.prototype, "name", {
+    get: function() {
+      return this.get("name");
+    },
+    set: function(value) {
+      this.set("name", value);
+    }
+  });
+
+  Object.defineProperty(Pub.prototype, "breed", {
+    get: function() {
+      return this.get("breed");
+    },
+    set: function(value) {
+      this.set("breed", value);
+    }
+  });
+
+  return Pub;
+});
+      </code>
+    </pre>
+    <h4>Controller</h4>
+    <pre prism class="language-javascript">
+      <code>
+app.controller('PubnubController', function($scope, PubNub, Pub) {
+  $scope.cat = {};
+  $scope.catForm = {};
+  toastr.options.progressBar = true;
+  toastr.options.closeButton = true;
+  PubNub.init({
+    subscribe_key:'YourSubscribeKey'
+  });
+
+  $scope.getCat = function() {
+    Pub.getAll()
+    .then(function(cat) {
+      //console.log(lineas);
+      $scope.cat = cat;
+      PubNub.ngSubscribe({
+        channel: 'cat',
+        message: function(object){
+          cat.name = object[0].name;
+          cat.breed = object[0].breed;
+          $scope.$apply();
+        },
+        error: function (error) {
+          // Handle error here
+          console.log(JSON.stringify(error));
+        }
+      });
+    }, function(error){
+      Materialize.toast("Something bad happened, and it's not your fault", 3000);
+    });
+  };
+
+  $scope.updateCat = function(cat) {
+    Pub.update($scope.cat, cat)
+    .then(function(cat) {
+      $catForm = {};
+      toastr.success('Cat Updated !', '=D');
+    }, function(error) {
+      console.log(error);
+    })
+  };
+
+  $scope.getCat();
+
+})
+      </code>
+    </pre>
+  </div>
+</div>

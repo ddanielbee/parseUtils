@@ -1,0 +1,18 @@
+<nav>
+  <div class="nav-wrapper">
+    <a href="#!" class="brand-logo">Angular + Parse Utils</a>
+    <a href="#" data-activates="mobile-demo" class="button-collapse"><i class="material-icons">menu</i></a>
+    <ul class="right hide-on-med-and-down">
+      <li ng-class="{'active' : activeView == '/get'}"><a href="#/get">Simple gets</a></li>
+      <li ng-class="{'active' : activeView == '/post'}"><a href="#/post">Simple posts</a></li>
+      <li ng-class="{'active' : activeView == '/counter'}"><a href="#/counter">Counters</a></li>
+      <li ng-class="{'active' : activeView == '/pubnub'}"><a href="#/pubnub">Pubnub Realtime</a></li>
+    </ul>
+    <ul class="side-nav" id="mobile-demo">
+      <li ng-class="{'active' : activeView == '/get'}"><a href="#/get">Simple gets</a></li>
+      <li ng-class="{'active' : activeView == '/post'}"><a href="#/post">Simple posts</a></li>
+      <li ng-class="{'active' : activeView == '/counter'}"><a href="#/counter">Counters</a></li>
+      <li ng-class="{'active' : activeView == '/pubnub'}"><a href="#/pubnub">Pubnub Realtime</a></li>
+    </ul>
+  </div>
+</nav>

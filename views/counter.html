@@ -1,0 +1,90 @@
+<div class="row">
+  <div class="col s12 m8">
+    <h1>Using Counters, the Parse Way</h1>
+    <p>Parse has some problems counting resulting objects. It's quite simple to just call the length of the array you got when querying for something, but when you need to know how many objects you have, in a class that has tens of thousands of rows, well, querying everything just for that sucks at performance.</p>
+    <p>Parse recommends in it's docs to use handmade Counters, but they don't really go into full detail about it. So, here's the way to use it.</p>
+    <blockquote>
+      The current number of languages is: {{counter.count}}
+    </blockquote>
+    <p>The important part of this is that, it's a good practice to keep a counter for everything your app is going to create. At least user created data should have a counter, as you never know when it'll spiral out of control. The way to do this is pretty simple, you just have to use a bit of cloud code, like this:</p>
+    <pre prism class="language-javascript">
+      <code>
+var Counter = Parse.Object.extend("Counter");
+
+Parse.Cloud.afterSave("Languages", function(request) {
+  if(request.object.updatedAt.getTime() == request.object.createdAt.getTime()) 
+  {
+    var query = new Parse.Query(Counter);
+    query.equalTo('type', 'languages');
+    query.first({
+      success: function(counter) {
+        counter.increment('count', 1);
+        counter.save();
+      },
+      error: function(error) {
+        console.error("Got an error " + error.code + " : " + error.message);
+      }
+    })
+  }
+});
+      </code>
+    </pre>
+    <p>This way, everytime something from that class is saved, it'll find the counter and increment it. The conditional for updatedAt and createdAt, is to make sure that it only adds up when an object is actually created and not on update.</p>
+    <p>Here's the code for the rest of the snippet:</p>
+    <h4>Service</h4>
+    <pre prism class="language-javascript">
+      <code>
+app.factory('Counter', function($q) {
+  var Counter = Parse.Object.extend('Counter', {
+
+  }, {
+    getCounter: function() {
+      var defer = $q.defer();
+      var query = new Parse.Query(this);
+      query.equalTo('type', 'languages');
+      query.first({
+        success : function(counter) {
+          defer.resolve(counter);
+        },
+        error : function(error) {
+          defer.reject(error);
+        }
+      });
+      return defer.promise;
+    }
+  });
+
+  Object.defineProperty(Counter.prototype, "count", {
+    get: function() {
+      return this.get("count");
+    },
+    set: function(value) {
+      this.set("count", value);
+    }
+  });
+
+  return Counter;
+});
+      </code>
+    </pre>
+    <h4>Controller</h4>
+    <pre prism class="language-javascript">
+      <code>
+app.controller('CounterController', function($scope, Counter) {
+  $scope.counter = {};
+
+  $scope.getCounter = function() {
+    Counter.getCounter()
+    .then(function(counter) {
+      $scope.counter = counter;
+    }, function(error) {
+      console.log(error);
+    });
+  };
+
+  $scope.getCounter();
+});
+      </code>
+    </pre>
+  </div>
+</div>

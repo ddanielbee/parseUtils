@@ -1,0 +1,98 @@
+<div class="row">
+  <div class="col s12 m8">
+    <h1>Getting Data out of Parse - Beginner's guide</h1>
+    <p>Getting data out of Parse is really simple. They have a great Javascript library that takes care of everything, and ample documentation. The problem comes when we try to use Parse inside an Angular app. Some steps need to be taken in order for Parse to talk pretty to Angular and viceversa. This is a simple example that gets a list of languages from my "Languages" class in a Parse app.</p>
+  
+  <table class="striped responsive-table">
+    <thead>
+      <tr>
+          <th data-field="name">Name</th>
+          <th data-field="abr">Abr</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr ng-repeat="language in languages">
+        <td>{{language.name}}</td>
+        <td>{{language.abr}}</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>So first things first. We have to instantiate our Parse app, and in Angular, we can do that in the run block of our app declaration.</p>
+  <pre prism class="language-javascript">
+    <code>
+var app = angular.module('app', [
+    'ngRoute',
+    'ngAnimate',
+    'pubnub.angular.service'
+  ])
+  .run(function($rootScope) {
+    Parse.initialize("Parse App Id", "Javascript Key");
+  })
+    </code>
+  </pre>
+  <p>When I started using Parse in Angular apps, I found this great <a href="http://blog.slidebean.com/blog/2013/11/5/5-tips-for-using-parse-with-angularjs" target="_blank">writeup</a> from the people at slidebean. I really took this tips to heart and never looked back. This is what my Service and Controller look like:</p>
+  <h4>Service</h4>
+  <pre prism class="language-javascript">
+    <code>
+app.factory('Get', function($q) {
+  var Get = Parse.Object.extend('Languages', {
+
+  }, {
+    getAll: function() {
+      var defer = $q.defer();
+      var query = new Parse.Query(this);
+      query.ascending('createdAt');
+      query.find({
+        success : function(languages) {
+          defer.resolve(languages);
+        },
+        error : function(error) {
+          defer.reject(error);
+        }
+      });
+      return defer.promise;
+    }
+  });
+
+  Object.defineProperty(Get.prototype, "name", {
+    get: function() {
+      return this.get("name");
+    },
+    set: function(value) {
+      this.set("name", value);
+    }
+  });
+
+  Object.defineProperty(Get.prototype, "abr", {
+    get: function() {
+      return this.get("abr");
+    },
+    set: function(value) {
+      this.set("abr", value);
+    }
+  });
+
+  return Get;
+})
+    </code>
+  </pre>
+  <h4>Controller</h4>
+  <pre prism class="language-javascript">
+    <code>
+app.controller('GetController', function($scope, Get) {
+  $scope.languages = [];
+
+  $scope.getAll = function() {
+    Get.getAll()
+    .then(function(languages) {
+      $scope.languages = languages;
+    }, function(error) {
+      console.log(error);
+    })
+  };
+  $scope.getAll();
+})
+    </code>
+  </pre>
+  <p>Notice where I write <pre prism class="language-javascript"><code>Object.defineProperty ?</code></pre> This has to be done, because Parse uses .get('property') syntax to get info out of the objects it retrieves. Angular though, uses dot (.property) notation. Parse's syntax doesn't translate well (or, not at all), to writing properties inside html like Angular does. So, writing <pre prism class="language-markup"><code>{{object.get('property')}}</code></pre>just doesn't work (or at least didn't work for me.</p>
+</div>
